@@ -1,0 +1,108 @@
+import sys
+import os
+import math
+
+OUTPUT_FILE_NAME = "outFile.txt"
+ROW_COUNT = 10
+COLUMN_COUNT = 20
+
+def input_file_handling():
+    
+    #command line argument
+    inFileName = sys.argv[1]
+
+    inFile = open(inFileName, 'r')
+
+    orders = {}
+
+    for line in inFile:
+        orders[line.split()[0]] = int(line.split()[1])
+
+    orderList=sorted((value, key) for (key,value) in orders.items())
+    orders=dict(reversed([(k,v) for v,k in orderList]))
+
+    inFile.close()
+
+    return orders
+
+def output_file_handling(outString):
+
+    outFile = open(OUTPUT_FILE_NAME,"w")
+    outFile.write(outString)
+    outFile.close()
+
+def row_segmenting(orders):
+
+    group = chr(ord('A') - 1 + (ROW_COUNT // 2))
+    seats = {}
+    total = 0
+    distance = 2
+
+    for order in orders:
+        if (group not in seats):
+            total = 0
+            seats[group] = [[order, orders[order]]]
+
+        elif (total + 3 + orders[order] <= COLUMN_COUNT):
+            seats[group].append([order, orders[order]])
+
+        else:
+            total = 0
+            group = chr(ord(group) + distance)
+            distance += int(distance/abs(distance) * 2)
+            distance *= -1
+            seats[group] = [[order, orders[order]]]
+
+        total += (3 + orders[order])
+
+    return seats
+
+def column_distribution(seats):
+
+    final = {}
+
+    for row in seats:
+        total = 0
+
+        for ticket in seats[row]:
+            total += ticket[1] + 3
+
+        total -= 3
+        start = (COLUMN_COUNT - total) // 2
+        offset = 0 
+
+        for ticket in seats[row]:
+            for i in range(ticket[1]):
+
+                if (ticket[0] not in final):
+                    final[ticket[0]] = [row + str(i + start + offset)]
+                else:
+                    final[ticket[0]].append(row + str(i + start + offset))
+
+            offset += ticket[1] + 3
+
+    return dict(sorted(final.items(), key=lambda item: item[0]))
+
+def string_creation(final):
+
+    outString = ""
+    for order in final:
+
+        outString += order + " "
+        for i in range(len(final[order])):
+
+            outString += final[order][i]
+            if (i != len(final[order]) - 1):
+                outString += ","
+
+        outString += "\n"
+
+    return outString
+
+orders = input_file_handling()
+seats = row_segmenting(orders)
+final = column_distribution(seats)
+outString = string_creation(final)
+output_file_handling(outString)
+
+print(os.path.dirname(__file__)+"\\"+OUTPUT_FILE_NAME)

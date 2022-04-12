@@ -1,0 +1,228 @@
+#contributors: Joe Liang, Haseeb Irfan, Quentin Johnson
+
+
+import copy
+from operator import itemgetter
+import datetime as dt
+
+#This function takes the string input and turns it into a 2D array
+#usage - start and goal states
+#input "3 2 4; 1 5 8; 6 7 0" (no quotations) where 0 is the blank space
+def inputTo2DArray(input):
+    rows, cols = (3,3)
+    arr = [[0 for i in range(cols)] for j in range(rows)]
+    splitRows = input.split(';') #split string into a list ['3 2 4',' 1 5 8',' 6 7 X']
+    splitRows[1] = splitRows[1].strip();
+    splitRows[2] = splitRows[2].strip(); #remove leading and trailing whitespaces ['3 2 4','1 5 8','6 7 X']
+    currentRow = 0
+    currentCol = 0
+    for Row in splitRows:
+        splitElements = Row.split(' '); #split each row into its elements ['3','2','4']
+        for Element in splitElements:
+            if (Element=="X"):
+                arr[currentRow][currentCol] = 0
+            else:
+                arr[currentRow][currentCol] = int(Element) #place each element into the correct position in 2D arr
+            currentCol = currentCol + 1
+        currentRow = currentRow + 1
+        currentCol = 0
+    print2DArray(arr)
+    return arr
+
+#print formatted 2D array
+def print2DArray(arr):
+    #print(arr)
+    numRows = len(arr)
+    numCols = len(arr[0])
+    for i in range(numRows):
+        for j in range(numCols):
+            if (j==numCols-1):
+                print(arr[i][j])
+            else:
+                print(arr[i][j], end=" ")
+    print("\n");
+
+#Misplaced Tiles Heuristic
+def MTHeuristic(currState, goalState): 
+    numRows = len(currState)
+    numCols = len(currState[0])
+    misplacedTiles = 0
+    for i in range(numRows):
+        for j in range(numCols):
+            if ((currState[i][j] != goalState[i][j]) and currState[i][j] != 0):
+                misplacedTiles = misplacedTiles + 1
+    #print(misplacedTiles)
+    return misplacedTiles
+
+#Given an board array, converts each value from 0-8 into an index, with each index holding the x,y locations of the value. Ex - rowcolarr[3] = [0,0]
+#size of rowcolarr = 9 (0-8) indices with each indices holding [x,y]
+def elementToRowCol(arr):
+    #print("elementToRowCol")
+    rows, cols = (len(arr)*len(arr[0]),2)
+    rowcolarr = [[0 for i in range(cols)] for j in range(rows)] #rowcolarr = [] #[[1,3],[2,4]]
+    numRows = len(arr)
+    numCols = len(arr[0])
+    for i in range(numRows):
+        for j in range(numCols):
+            rowcolarr[arr[i][j]][0] = i
+            rowcolarr[arr[i][j]][1] = j
+    #print(rowcolarr)
+    return rowcolarr
+
+#Manhattan Distance Heuristic
+def MDHeuristic(currState, goalState):
+    numRows = len(currState)
+    numCols = len(currState[0])
+    rowcolarr1 = elementToRowCol(currState)
+    rowcolarr2 = elementToRowCol(goalState)
+    manhattanDistance = 0
+    for i in range(numRows*numCols):
+        for j in range(2):
+            if (i != 0):
+                manhattanDistance = manhattanDistance + (abs(rowcolarr1[i][j]-rowcolarr2[i][j]))
+    #print(manhattanDistance)
+    return manhattanDistance
+
+#moveTile 0-up 1-down 2-left 3-right
+def moveTile(arr, direction):
+    numRows = len(arr)
+    numCols = len(arr[0])
+    #find location of empty tile
+    rowcolarr = elementToRowCol(arr)
+    row = rowcolarr[0][0]
+    col = rowcolarr[0][1]
+    arr1 = copy.deepcopy(arr)
+    #check to make sure it is valid direction
+    if direction==0: #move up, row cannot be 0
+        if row==0:
+            return False, arr1
+        else:
+            arr1[row][col] = arr1[row-1][col]
+            arr1[row-1][col] = 0
+            return True, arr1
+    elif direction==1: #move down, row cannot be the last row
+        if row==numRows-1:
+            return False, arr1
+        else:
+            arr1[row][col] = arr1[row+1][col]
+            arr1[row+1][col] = 0
+            return True, arr1
+    elif direction==2: #move left, col cannot be 0
+        if col==0:
+            return False, arr1
+        else:
+            arr1[row][col] = arr1[row][col-1]
+            arr1[row][col-1] = 0
+            return True, arr1
+    elif direction==3: #move right, col cannot be the last col
+        if col==numCols-1:
+            return False, arr1
+        else:
+            arr1[row][col] = arr1[row][col+1]
+            arr1[row][col+1] = 0
+            return True, arr1
+
+#function to get rid of loops and paths suboptimally arriving at same nodes
+def isNewNode(node, traveledNodes):
+    newNode = True
+    for i in range(len(traveledNodes)):
+        if MTHeuristic(node, traveledNodes[i]) == 0:
+            return False
+    return newNode
+
+#new improved function that saves comparison time by instead checking if the node is inside the traveledNodes
+def isNewNode2(node, traveledNodes):
+    if str(node) in traveledNodes:
+        return False
+    else:
+        return True
+
+#'''
+from bisect import bisect_left
+
+def insert(seq, keys, item, keyfunc=lambda v: v):
+    """Insert an item into a sorted list using a separate corresponding
+       sorted keys list and a keyfunc() to extract the key from each item.
+
+    Based on insert() method in SortedCollection recipe:
+    http://code.activestate.com/recipes/577197-sortedcollection/
+    """
+    k = keyfunc(item)  # Get key.
+    i = bisect_left(keys, k)  # Determine where to insert item.
+    keys.insert(i, k)  # Insert key of item to keys list.
+    seq.insert(i, item)  # Insert the item itself in the corresponding place.
+#'''
+
+'''
+A* search
+Form a one-element queue consisting of a zero length path that contains only the root node
+Until the first path in the queue terminates at the goal node or the queue is empty
+    remove the first path from the queue; create new paths by extending the first path to all the nieghbors of the terminal node
+    reject all new paths with loops
+    if two or more paths reach a common node, delete all those paths except the one that reaches the common node with the minimum cost
+    sort the entire queue by the sum of the path length anda lower bound estimate of the cost remaining, with least cost paths in front
+If the goal node is found, announce success; otherwise, announce failure
+queue element: [arrstate, f = g + h, move1, move2,..., moven]
+'''
+def aStar(start, goal, hFunction):
+    g = 0
+    queue = [[start,g+hFunction(start,goal)]]
+    traveledNodes = {}
+    print(queue)
+    t = dt.datetime.now()
+    keys = [r[1] for r in queue]
+    while (hFunction(queue[0][0], goal) > 0 and len(queue)>0): #while not at goal state
+        #printing every 30s
+        delta = dt.datetime.now()-t
+        if delta.seconds >= 30:
+            t = dt.datetime.now()
+            print("queue length: "+str(len(queue))+" f=g+h: "+str(queue[0][1])+" misplaced tiles: "+str(MTHeuristic(queue[0][0], goal))+" total moves (g): "+str(len(queue[0])-2)+" traveled nodes: "+str(len(traveledNodes)))
+        g = g+1
+        currState = queue[0][0]
+        currDirections = queue[0][2::]
+        for direction in range(4):
+            dir = ""
+            if direction==0:
+                dir = "up"
+            elif direction==1:
+                dir = "down"
+            elif direction==2:
+                dir = "left"
+            elif direction==3:
+                dir = "right"
+            success, newState = moveTile(currState, direction)
+            if success==True and isNewNode2(newState, traveledNodes)==True: #if move was successful and it is a new unseen state
+                newPath = [copy.deepcopy(newState), g+hFunction(copy.deepcopy(newState),goal)] #IMPORTANT: copy.deepcopy() returns a copied version of the array
+                traveledNodes[str(newState)] = True #insert new state into traveledNodes
+                for element in currDirections:
+                    newPath.append(element)
+                newPath.append(dir) #append all the directions
+                insert(queue, keys, newPath, keyfunc=lambda x: x[1]) #uses improved sorting insert to avoid sorting the whole queue again
+        queue.pop(0) #removes first item from list (traveled)
+        #queue.sort(key=lambda x: x[1]) old sorting, sorts entire queue
+    print("queue[0]: "+str(queue[0])+" number of moves: "+str(len(queue[0])-2)+" total unique nodes explored: "+str(len(traveledNodes)))
+
+
+
+#MAIN#
+'''
+3 2 4
+1 5 8
+6 7 0
+
+3 6 7
+8 5 1
+2 0 4
+'''
+print("Starting Array")
+#arr = inputTo2DArray("1 2 6; 7 4 0; 3 8 5")
+arr = inputTo2DArray("1 2 3; 4 5 6; 7 8 0")
+
+print("Goal Array")
+#goal = inputTo2DArray("1 2 3; 4 0 5; 6 7 8") #works 
+goal = inputTo2DArray("8 6 7; 2 5 4; 3 0 1")
+
+print("A* with MDHeuristic")
+aStar(arr, goal, MDHeuristic)
+print("A* with MTHeuristic")
+aStar(arr, goal, MTHeuristic)

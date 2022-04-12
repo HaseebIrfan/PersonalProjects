@@ -1,0 +1,39 @@
+import pyautogui, time
+
+print("This program will keep moving around your mouse to prevent inactivity")
+print("To stop it, simply move the mouse")
+
+wh=pyautogui.size()
+pyautogui.moveTo(1,1,duration=.3)
+
+pos=pyautogui.position()
+pw=pos[0]
+ph=pos[1]
+iterw=1
+iterh=1
+count=10
+print("Window minimizing in...")
+
+while (pos[0]==pw and ph==pos[1]):
+
+    if(pw+iterw*50>wh[0] or pw+iterw*50<0):
+       iterw*=-1
+    if(ph+iterh*50>wh[1] or ph+iterh*50<0):
+       iterh*=-1
+    pyautogui.press("shift")
+    pyautogui.move(iterw*50,iterh*50, duration=0.5)
+    pos=pyautogui.position()
+    pw=pos[0]
+    ph=pos[1]
+
+    time.sleep(.2)
+
+    pos=pyautogui.position()
+
+    if(count>=0):
+        print(str(count))
+
+    if count==0:
+        fw = pyautogui.getActiveWindow()
+        fw.minimize()
+    count-=1
